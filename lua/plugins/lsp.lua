@@ -2,8 +2,8 @@ return {
   "neovim/nvim-lspconfig",
   config = function()
     local lspconfig = require "lspconfig"
-    lspconfig.pyright.setup {}
-    lspconfig.ocamllsp.setup {}
+    lspconfig.pyright.setup({})
+    lspconfig.ocamllsp.setup({})
     lspconfig.lua_ls.setup({
         on_init = function(client)
           if client.workspace_folders then
@@ -27,7 +27,15 @@ return {
           })
         end,
         settings = {
-          Lua = {},
+          Lua = {
+            format = {
+              enable = true,
+              defaultConfig = {
+                indent_style = "space",
+                indent_size = "2",
+              }
+            },
+          },
         },
     })
   end,

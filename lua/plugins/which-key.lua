@@ -12,6 +12,12 @@ vim.keymap.set("n", "<leader>o", ":Telescope find_files<cr>", make_noremap_opts(
 vim.keymap.set("n", "<leader>;", ":vs<cr>", make_noremap_opts("Split Window Right"))
 vim.keymap.set("n", "<leader>'", ":sp<cr>", make_noremap_opts("Split Window Below"))
 
+local i = 1
+while i <= 9 do
+  vim.keymap.set("n", "<leader>" .. i, ":" .. i .. " wincmd w<cr>", opts)
+  i = i + 1
+end
+
 -- Buffers ==========================================
 -- ==================================================
 

@@ -21,8 +21,6 @@ return {
 
   'tpope/vim-sexp-mappings-for-regular-people',
 
-  'tpope/vim-fugitive',
-
   'nvim-lua/plenary.nvim',
 
   'chrisbra/NrrwRgn',
@@ -41,23 +39,6 @@ return {
 
   'andymass/vim-matchup',
 
-  'hrsh7th/cmp-nvim-lua',
-
-  'hrsh7th/cmp-nvim-lsp',
-
-  'hrsh7th/cmp-buffer',
-
-  'hrsh7th/cmp-path',
-
-  'hrsh7th/cmp-cmdline',
-
-  'PaterJason/cmp-conjure',
-
-  'hrsh7th/nvim-cmp',
-
   'SirVer/ultisnips',
-
-  'quangnguyen30192/cmp-nvim-ultisnips',
-
-  'xiyaowong/transparent.nvim'
 }
+
