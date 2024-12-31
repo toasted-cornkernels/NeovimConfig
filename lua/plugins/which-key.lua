@@ -68,10 +68,9 @@ vim.keymap.set("n", "<leader>si", ":CocList outline<cr>", opts)
 -- Git ==============================================
 -- ==================================================
 
-vim.keymap.set("n", "<leader>gs", ":Git<cr>", opts)
-vim.keymap.set("n", "<leader>ga", ":Git add .<cr>", opts)
-vim.keymap.set("n", "<leader>gc", ":Git commit<cr>", opts)
-vim.keymap.set("n", "<leader>gpu", ":Git push<cr>", opts)
+vim.keymap.set("n", "<leader>gs", ":Neogit<cr>", opts)
+vim.keymap.set("n", "<leader>gc", ":Neogit commit<cr>", opts)
+vim.keymap.set("n", "<leader>gpu", ":Neogit push<cr>", opts)
 
 vim.keymap.set("n", "<leader>qq", ":qa!<cr>", opts)
 
