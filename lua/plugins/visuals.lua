@@ -28,5 +28,18 @@ return {
         vim.cmd("colorscheme carbonfox")
       end,
     },
-  }
+  },
+  {
+    "catgoose/nvim-colorizer.lua",
+    event = "BufReadPre",
+    lazy = true,
+    opts = {
+      buftypes = {
+        '!prompt',
+        '!popup',
+        '!mason',
+      },
+    },
+  },
 }
+
