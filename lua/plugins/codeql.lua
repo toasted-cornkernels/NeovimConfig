@@ -1,6 +1,5 @@
 return {
   "pwntester/codeql.nvim",
-  dev = true,
   dependencies = {
     "MunifTanjim/nui.nvim",
     "nvim-telescope/telescope.nvim",
