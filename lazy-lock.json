@@ -8,6 +8,7 @@
   "cmp-nvim-lua": { "branch": "main", "commit": "f12408bdb54c39c23e67cab726264c10db33ada8" },
   "cmp-nvim-ultisnips": { "branch": "main", "commit": "2be0eda0f7fbf47ebd9fbdace369cc45d57acf49" },
   "cmp-path": { "branch": "main", "commit": "91ff86cd9c29299a64f968ebb45846c485725f23" },
+  "codeql.nvim": { "branch": "master", "commit": "772fca7306a6302acdf5098387d755d30bd5876a" },
   "conjure": { "branch": "main", "commit": "320862224f7bc6b1ed6d084bae969166dd71f051" },
   "diffview.nvim": { "branch": "main", "commit": "4516612fe98ff56ae0415a259ff6361a89419b0a" },
   "fennel.vim": { "branch": "main", "commit": "d6ad76bbbd86b23e343ed08e12bdca46fd604cd8" },

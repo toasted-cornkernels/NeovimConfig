@@ -50,10 +50,18 @@ vim.inccommand = "split"
 vim.cursorline = false
 vim.scrolloff = 3
 vim.sidescrolloff = 5
+vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.list = true
 vim.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 vim.history = 1000
 vim.opt.fillchars = { eob = ' ' }
+
+vim.cmd [[
+  highlight Normal guibg=none
+  highlight NonText guibg=none
+  highlight Normal ctermbg=none
+  highlight NonText ctermbg=none
+]]
 
 -- Neoformat config
 vim.g.neoformat_enabled_python = { "black" }
