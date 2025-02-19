@@ -9,8 +9,6 @@ return {
 
   'nvim-telescope/telescope-file-browser.nvim',
 
-  'tpope/vim-sleuth',
-
   'tpope/vim-commentary',
 
   'tpope/vim-repeat',
