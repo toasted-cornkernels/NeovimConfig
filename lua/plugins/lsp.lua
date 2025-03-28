@@ -78,5 +78,4 @@ return {
 			on_attach = on_attach_callback,
 		})
 	end,
->>>>>>> c8b5c70af3cedb1e3accc2bb6aea33a80df771a4
 }
