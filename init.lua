@@ -20,10 +20,6 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
 require("lazy").setup({
-  'Olical/aniseed',
-
-  'Olical/conjure',
-
   'Olical/fennel.vim',
 
   'nvim-telescope/telescope.nvim',
@@ -59,6 +55,7 @@ require("lazy").setup({
   'andymass/vim-matchup',
 
   'SirVer/ultisnips',
+
   {
     "EdenEast/nightfox.nvim",
     config = function()
@@ -76,6 +73,7 @@ require("lazy").setup({
       vim.cmd("colorscheme carbonfox")
     end
   },
+
   {
     'nvim-lualine/lualine.nvim',
     dependencies = { 'nvim-tree/nvim-web-devicons' },
@@ -88,6 +86,7 @@ require("lazy").setup({
       })
     end
   },
+
   {
     'hrsh7th/nvim-cmp',
     config = function()
@@ -140,12 +139,14 @@ require("lazy").setup({
       })
     end
   },
+
   {
     'nvim-telescope/telescope-project.nvim',
     dependencies = {
       'nvim-telescope/telescope.nvim',
     },
   },
+
   {
     "f-person/auto-dark-mode.nvim",
     opts = {
@@ -159,6 +160,7 @@ require("lazy").setup({
       fallback = "dark"
     }
   },
+
   {
     "nvim-treesitter/nvim-treesitter",
     config = function()
@@ -176,6 +178,7 @@ require("lazy").setup({
       })
     end,
   },
+
   {
     "windwp/nvim-autopairs",
     event = "InsertEnter",
@@ -201,6 +204,7 @@ require("lazy").setup({
       })
     end,
   },
+
   {
     "https://git.sr.ht/~swaits/scratch.nvim",
     lazy = true,
@@ -214,6 +218,7 @@ require("lazy").setup({
     },
     opts = {},
   },
+
   {
     "folke/which-key.nvim",
     event = "VimEnter",
@@ -267,6 +272,23 @@ require("lazy").setup({
         { "<leader>q", group = "Quit", mode = { "n" } },
       },
     },
+  },
+
+  {
+    "NeogitOrg/neogit",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "sindrets/diffview.nvim",
+      "nvim-telescope/telescope.nvim",
+    },
+    config = function ()
+      local neogit = require "neogit" 
+      neogit.setup { 
+        popup = {
+          kind = "split",
+        },
+      }
+    end
   },
 })
 
