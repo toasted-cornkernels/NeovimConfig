@@ -19,7 +19,495 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
-require("lazy").setup("plugins")
+require("lazy").setup({
+  'Olical/fennel.vim',
+
+  'nvim-telescope/telescope.nvim',
+
+  'nvim-telescope/telescope-file-browser.nvim',
+
+  'tpope/vim-commentary',
+
+  'tpope/vim-repeat',
+
+  'tpope/vim-vinegar',
+
+  'tpope/vim-surround',
+
+  'tpope/vim-sexp-mappings-for-regular-people',
+
+  'nvim-lua/plenary.nvim',
+
+  'chrisbra/NrrwRgn',
+
+  'hylang/vim-hy',
+
+  'sbdchd/neoformat',
+
+  'nvim-orgmode/orgmode',
+
+  'guns/vim-sexp',
+
+  'farmergreg/vim-lastplace',
+
+  'rafcamlet/nvim-luapad',
+
+  'andymass/vim-matchup',
+
+  'SirVer/ultisnips',
+
+  {
+    "EdenEast/nightfox.nvim",
+    config = function()
+      require("nightfox").setup({
+        options = {
+          transparent = true,
+          terminal_colors = true,
+          styles = {
+            comments = "italic",
+            keywords = "bold",
+            types = "italic,bold",
+          }
+        }
+      })
+      vim.cmd("colorscheme carbonfox")
+    end
+  },
+
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    config = function()
+      vim.cmd("colorscheme carbonfox")
+      require('lualine').setup({
+        options = {
+          icons_enabled = true,
+        }
+      })
+    end
+  },
+
+  {
+    'hrsh7th/nvim-cmp',
+    config = function()
+      local cmp = require 'cmp'
+
+      cmp.setup({
+        preselect = cmp.PreselectMode.None,
+        snippet = {
+          expand = function(args)
+            vim.fn["UltiSnips#Anon"](args.body)
+          end,
+        },
+        window = {
+          completion = cmp.config.window.bordered(),
+          documentation = cmp.config.window.bordered(),
+        },
+        mapping = cmp.mapping.preset.insert({
+          ["<C-p>"] = cmp.mapping.select_prev_item(),
+          ["<C-n>"] = cmp.mapping.select_next_item(),
+          ['<C-u>'] = cmp.mapping.scroll_docs(-4),
+          ['<C-d>'] = cmp.mapping.scroll_docs(4),
+          ['<C-g>'] = cmp.mapping.abort(),
+          ['<Tab>'] = cmp.mapping.confirm({ select = true }),
+          ['<CR>'] = cmp.config.disable
+        }),
+        sources = cmp.config.sources({
+          { name = 'nvim_lsp' },
+          { name = 'nvim_lua' },
+          { name = 'ultisnips' },
+          { name = 'path' },
+        }, {
+          { name = 'buffer', keyword_length = 5 },
+        })
+      })
+
+      cmp.setup.cmdline('/', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = {
+          { name = 'buffer' }
+        }
+      })
+
+      cmp.setup.cmdline(':', {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({
+          { name = 'path' }
+        }, {
+          { name = 'cmdline' }
+        })
+      })
+    end
+  },
+
+  {
+    'nvim-telescope/telescope-project.nvim',
+    dependencies = {
+      'nvim-telescope/telescope.nvim',
+    },
+  },
+
+  {
+    "f-person/auto-dark-mode.nvim",
+    opts = {
+      set_dark_mode = function()
+        vim.cmd("colorscheme carbonfox")
+      end,
+      set_light_mode = function()
+        vim.cmd("colorscheme dayfox")
+      end,
+      update_interval = 3000,
+      fallback = "dark"
+    }
+  },
+
+  {
+    "nvim-treesitter/nvim-treesitter",
+    config = function()
+      require("nvim-treesitter.configs").setup({
+        highlight = {
+          enable = true,
+        },
+        ensure_installed = {
+          "vimdoc",
+          "luadoc",
+          "vim",
+          "lua",
+          "markdown",
+        },
+      })
+    end,
+  },
+
+  {
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
+    config = function()
+      local npairs = require("nvim-autopairs")
+      local Rule = require("nvim-autopairs.rule")
+
+      npairs.setup({
+        check_ts = true,
+        ts_config = {
+          lua = { "string" }, -- it will not add a pair on that treesitter node
+          javascript = { "template_string" },
+          java = false, -- don't check treesitter on java
+        },
+      })
+
+      local ts_conds = require("nvim-autopairs.ts-conds")
+
+      -- press % => %% only while inside a comment or string
+      npairs.add_rules({
+        Rule("%", "%", "lua"):with_pair(ts_conds.is_ts_node({ "string", "comment" })),
+        Rule("$", "$", "lua"):with_pair(ts_conds.is_not_ts_node({ "function" })),
+      })
+    end,
+  },
+
+  {
+    "https://git.sr.ht/~swaits/scratch.nvim",
+    lazy = true,
+    keys = {
+      { "<leader>bs", "<cmd>Scratch<cr>", desc = "Scratch Buffer", mode = "n" },
+      { "<leader>bS", "<cmd>ScratchSplit<cr>", desc = "Scratch Buffer (split)", mode = "n" },
+    },
+    cmd = {
+      "Scratch",
+      "ScratchSplit",
+    },
+    opts = {},
+  },
+  {
+    "folke/which-key.nvim",
+    event = "VimEnter",
+    opts = {
+      icons = {
+        mappings = vim.g.have_nerd_font,
+        keys = vim.g.have_nerd_font and {} or {
+          Up = "<Up> ",
+          Down = "<Down> ",
+          Left = "<Left> ",
+          Right = "<Right> ",
+          C = "<C-…> ",
+          M = "<M-…> ",
+          D = "<D-…> ",
+          S = "<S-…> ",
+          CR = "<CR> ",
+          Esc = "<Esc> ",
+          ScrollWheelDown = "<ScrollWheelDown> ",
+          ScrollWheelUp = "<ScrollWheelUp> ",
+          NL = "<NL> ",
+          BS = "<BS> ",
+          Space = "<Space> ",
+          Tab = "<Tab> ",
+          F1 = "<F1>",
+          F2 = "<F2>",
+          F3 = "<F3>",
+          F4 = "<F4>",
+          F5 = "<F5>",
+          F6 = "<F6>",
+          F7 = "<F7>",
+          F8 = "<F8>",
+          F9 = "<F9>",
+          F10 = "<F10>",
+          F11 = "<F11>",
+          F12 = "<F12>",
+        },
+      },
+
+      spec = {
+        { "<leader>b", group = "Buffers", mode = { "n", "x" } },
+        { "<leader>c", group = "Code", mode = { "n", "x" } },
+        { "<leader>d", group = "Document", mode = { "n" } },
+        { "<leader>f", group = "File", mode = { "n", "x" } },
+        { "<leader>fe", group = "Config", mode = { "n", "x" } },
+        { "<leader>w", group = "Window", mode = { "n" } },
+        { "<leader>r", group = "Rename", mode = { "n" } },
+        { "<leader>s", group = "Search", mode = { "n", "x" } },
+        { "<leader>w", group = "Window", mode = { "n" } },
+        { "<leader>t", group = "Toggle", mode = { "n" } },
+        { "<leader>g", group = "Git", mode = { "n", "v" } },
+        { "<leader>q", group = "Quit", mode = { "n" } },
+      },
+    },
+  },
+  {
+    "NeogitOrg/neogit",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "sindrets/diffview.nvim",
+      "nvim-telescope/telescope.nvim",
+    },
+    config = function ()
+      local neogit = require "neogit" 
+      neogit.setup { 
+        popup = {
+          kind = "split",
+        },
+      }
+    end
+  },
+  {
+    "pwntester/codeql.nvim",
+    dependencies = {
+      "MunifTanjim/nui.nvim",
+      "nvim-telescope/telescope.nvim",
+      "nvim-tree/nvim-web-devicons",
+    },
+    config = function()
+      local entry_display = require "telescope.pickers.entry_display"
+      local previewers = require "telescope.previewers"
+      local utils = require "telescope.utils"
+      local defaulter = utils.make_default_callable
+
+      local displayer = entry_display.create {
+        separator = " ",
+        items = {
+          { width = 8 }, -- commit
+          { width = 8 }, -- lang
+          { remaining = true }, -- nwo
+        },
+      }
+
+      local make_display = function(entry)
+        local path = entry.value
+        local parts = vim.split(path, "/")
+        local db = parts[#parts]
+        local nwo = parts[#parts - 2] .. "/" .. parts[#parts - 1]
+        local langAndCommit = vim.split(db:gsub("%.zip", ""), "-")
+        local lang = langAndCommit[1]
+        local commit = langAndCommit[2]
+        return displayer {
+          { commit, "TelescopeResultsComment" },
+          { lang, "TelescopeResultsNumber" },
+          { nwo, "TelescopeResultsString" },
+        }
+      end
+
+      local entry_maker = function(entry)
+        return {
+          valid = entry,
+          value = entry,
+          ordinal = entry,
+          display = make_display,
+        }
+      end
+
+      local previewer = defaulter(function(opts)
+        return previewers.new_buffer_previewer {
+          title = opts.preview_title,
+          get_buffer_by_name = function(_, entry)
+            return entry.value
+          end,
+          define_preview = function(self, entry)
+            local jsonPath = entry.value:gsub("%.zip", ".json")
+            print("JSON", jsonPath)
+            local bufnr = self.state.bufnr
+            if self.state.bufname ~= jsonPath or vim.api.nvim_buf_line_count(bufnr) == 1 then
+              local json = vim.fn.json_decode(vim.fn.readfile(jsonPath))
+              if json then
+                vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(vim.inspect(json), "\n"))
+              end
+              vim.api.nvim_buf_call(bufnr, function()
+                pcall(vim.cmd, "set filetype=json")
+              end)
+            end
+          end,
+        }
+      end).new
+
+      local telescope_opts = {
+        layout_strategy = "vertical",
+        layout_config = {
+          height = 50,
+          width = 80,
+        },
+      }
+
+      require("codeql").setup {
+        find_databases_cmd = { "gh", "qldb", "list" },
+        database_list_entry_maker = entry_maker,
+        database_list_previewer = previewer,
+        telescope_opts = telescope_opts,
+        results = {
+          max_paths = 15,
+          max_path_depth = nil,
+        },
+        panel = {
+          width = 80,
+          group_by = "sink",
+          show_filename = true,
+          long_filename = false,
+          context_lines = 3,
+        },
+        max_ram = 64000,
+      }
+      -- change summary background color
+      vim.api.nvim_create_autocmd("WinEnter", {
+        pattern = "*",
+        callback = function()
+          if not (vim.bo.filetype == "codeql_panel") then
+            return
+          end
+          vim.wo.winhighlight = "Normal:NormalAlt"
+        end,
+      })
+    end,
+    -- stylua: ignore
+    -- keys = {
+    --   { "<leader>q", "", desc = "+codeql" },
+    --   { "<leader>qp", function() require("codeql").smart_quick_evaluate() end, desc = "Eval Predicate" },
+    --   { "<leader>qr", function() require("codeql").run_query() end, desc = "Run Query" },
+    --   -- { "<leader>qg", function() require("codeql").run_query() end, desc = "Run Query" },    [[<Plug>(CodeQLGrepSource)]],
+    -- }
+  }
+})
+
+function make_noremap_opts(description)
+  return { noremap = true, desc = description }
+end
+local opts = { noremap = true }
+
+vim.keymap.set("n", "<leader>!", ":!", make_noremap_opts("Shell Command"))
+vim.keymap.set("n", "<leader>[", ":tabprev<cr>", make_noremap_opts("Previous Tab"))
+vim.keymap.set("n", "<leader>]", ":tabnext<cr>", make_noremap_opts("Next Tab"))
+vim.keymap.set("n", "<leader>.", ":tabnew<cr>", make_noremap_opts("Open Tab"))
+vim.keymap.set("n", "<leader>,", ":tabclose<cr>", make_noremap_opts("Close Tab"))
+vim.keymap.set("n", "<leader>o", ":Telescope find_files<cr>", make_noremap_opts("Find File"))
+vim.keymap.set("n", "<leader>;", ":vs<cr>", make_noremap_opts("Split Window Right"))
+vim.keymap.set("n", "<leader>'", ":sp<cr>", make_noremap_opts("Split Window Below"))
+
+local i = 1
+while i <= 9 do
+  vim.keymap.set("n", "<leader>" .. i, ":" .. i .. " wincmd w<cr>", opts)
+  i = i + 1
+end
+
+-- Buffers ==========================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>bb", ":Telescope buffers<cr>", make_noremap_opts("List buffers"))
+vim.keymap.set("n", "<leader>be", ":ggdG", make_noremap_opts("Erase Buffer"))
+vim.keymap.set("n", "<leader>bp", ":bp<cr>", make_noremap_opts("Previous Buffer"))
+vim.keymap.set("n", "<leader>bn", ":bn<cr>", make_noremap_opts("Next Buffer"))
+vim.keymap.set("n", "<leader>bd", ":bw<cr>", make_noremap_opts("Close Buffer"))
+vim.keymap.set("n", "<leader>b=", ":Neoformat<cr>", make_noremap_opts("Format Buffer"))
+
+-- Narrowing ========================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>nt", ":tabnew<cr>", opts)
+
+-- Files ============================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>fn", ":next<cr>", make_noremap_opts("Next File"))
+vim.keymap.set("n", "<leader>fp", ":prev<cr>", make_noremap_opts("Previous File"))
+vim.keymap.set("n", "<leader>fs", ":w<cr>", make_noremap_opts("Write File"))
+vim.keymap.set("n", "<leader>ff", ":Telescope fd<cr>", make_noremap_opts("Find File"))
+vim.keymap.set("n", "<leader>fr", ":Telescope oldfiles<cr>", make_noremap_opts("Find Recent File"))
+vim.keymap.set("n", "<leader>fed", ":e ~/.config/nvim/init.lua<cr>", make_noremap_opts("Open Config File"))
+
+-- Windows ==========================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>w<tab>", "<C-w>p", opts)
+vim.keymap.set("n", "<leader>wd", "<C-w>c", opts)
+vim.keymap.set("n", "<leader>wv", ":vs<cr>", opts)
+vim.keymap.set("n", "<leader>ws", ":sp<cr>", opts)
+vim.keymap.set("n", "<leader>wh", "<C-w>h", opts)
+vim.keymap.set("n", "<leader>wj", "<C-w>j", opts)
+vim.keymap.set("n", "<leader>wk", "<C-w>k", opts)
+vim.keymap.set("n", "<leader>wl", "<C-w>l", opts)
+vim.keymap.set("n", "<leader>wr", "<C-w>r", opts)
+vim.keymap.set("n", "<leader>w=", "<C-w>=", opts)
+
+-- Search ===========================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>sc", ":noh<cr>", opts)
+vim.keymap.set("n", "<leader>saf", ":Telescope grep_string<cr>", opts)
+vim.keymap.set("n", "<leader>st", ":CocOutline<cr>", opts)
+vim.keymap.set("n", "<leader>si", ":CocList outline<cr>", opts)
+
+-- Git ==============================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>gs", ":Neogit<cr>", opts)
+vim.keymap.set("n", "<leader>gc", ":Neogit commit<cr>", opts)
+vim.keymap.set("n", "<leader>gpu", ":Neogit push<cr>", opts)
+
+vim.keymap.set("n", "<leader>qq", ":qa!<cr>", opts)
+
+-- Projects =========================================
+-- ==================================================
+
+vim.keymap.set("n", "<leader>p/", ":Rg", opts)
+
+vim.keymap.set("n", "<leader>cdc", ":lcd %:p:h<cr>", opts)
+vim.keymap.set("n", "<leader>cdt", ":lcd", opts)
+vim.keymap.set("n", "<leader>cC", ":make<cr>", opts)
+
+vim.keymap.set("n", "<leader>Tp", ":colorscheme seoul256<cr>", opts)
+vim.keymap.set("n", "<leader>Tn", ":colorscheme seoul256-light<cr>", opts)
+
+vim.keymap.set("n", "<leader><leader>", ":Telescope commands<cr>", opts)
+vim.keymap.set("n", "<leader><TAB>", "<C-^>", opts)
+
+-- Non-leader Vim keys ==============================
+-- ==================================================
+
+vim.keymap.set("n", "ZA", ":wqa!<cr>", opts)
+
+-- Emacs-like keys ==================================
+-- ==================================================
+
+vim.keymap.set("n", "<C-x><C-c>", ":wqa!<cr>", opts)
+vim.keymap.set("i", "<C-f>", "<right>", opts)
+vim.keymap.set("i", "<C-b>", "<left>", opts)
+vim.keymap.set("i", "<C-l>", "<esc>zza", opts)
+vim.keymap.set("n", "<C-l>", "zz", opts)
 
 vim.encoding = "utf-8"
 vim.fileencoding = "utf-8"
@@ -58,30 +546,30 @@ vim.history = 1000
 vim.opt.fillchars = { eob = ' ' }
 
 vim.cmd [[
-  highlight Normal guibg=none
-  highlight NonText guibg=none
-  highlight Normal ctermbg=none
-  highlight NonText ctermbg=none
+highlight Normal guibg=none
+highlight NonText guibg=none
+highlight Normal ctermbg=none
+highlight NonText ctermbg=none
 ]]
 
 -- Neoformat config
 vim.g.neoformat_enabled_python = { "black" }
 
 vim.api.nvim_create_user_command("W", "<line1>,<line2>write<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("Write", "<line1>,<line2>write<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("Wq", "<line1>,<line2>wq<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("WQ", "<line1>,<line2>wq<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("WQall", "wqa<bang>", { bar = true, bang = true })
 vim.api.nvim_create_user_command("We", "<line1>,<line2>w<bang> | e <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("Wnext", "<count>wnext<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("Wprevious", "<count>wprevious<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", range = "%", bang = true })
+{ bar = true, nargs = "*", complete = "file", range = "%", bang = true })
 vim.api.nvim_create_user_command("E", "edit<bang> <args>", { bar = true, nargs = "*", complete = "file", bang = true })
 vim.api.nvim_create_user_command("Edit", "edit<bang> <args>", { bar = true, nargs = "*", complete = "file", bang = true })
 vim.api.nvim_create_user_command("Q", "quit<bang>", { bar = true, bang = true })
@@ -93,7 +581,7 @@ vim.api.nvim_create_user_command("Make", "make<bang> <args>", { bar = true, narg
 vim.api.nvim_buf_create_user_command(0, "Bdel", "bdel<bang> <args>", { bar = true, nargs = "*", bang = true })
 vim.api.nvim_buf_create_user_command(0, "Bwipe", "bwipe<bang> <args>", { bar = true, nargs = "*", bang = true })
 vim.api.nvim_create_user_command("Mksession", "mksession<bang> <args>",
-  { bar = true, nargs = "*", complete = "file", bang = true })
+{ bar = true, nargs = "*", complete = "file", bang = true })
 vim.api.nvim_create_user_command("Cd", "cd<bang> <args>", { bar = true, nargs = "*", complete = "dir", bang = true })
 vim.api.nvim_create_user_command("Messages", "messages", { bar = true })
 vim.api.nvim_create_user_command("Source", "source", { bar = true, nargs = "+", complete = "file", bang = true })
