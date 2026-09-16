@@ -54,8 +54,6 @@ require("lazy").setup({
 
   'andymass/vim-matchup',
 
-  'SirVer/ultisnips',
-
   {
     "EdenEast/nightfox.nvim",
     config = function()
@@ -88,59 +86,6 @@ require("lazy").setup({
   },
 
   {
-    'hrsh7th/nvim-cmp',
-    config = function()
-      local cmp = require 'cmp'
-
-      cmp.setup({
-        preselect = cmp.PreselectMode.None,
-        snippet = {
-          expand = function(args)
-            vim.fn["UltiSnips#Anon"](args.body)
-          end,
-        },
-        window = {
-          completion = cmp.config.window.bordered(),
-          documentation = cmp.config.window.bordered(),
-        },
-        mapping = cmp.mapping.preset.insert({
-          ["<C-p>"] = cmp.mapping.select_prev_item(),
-          ["<C-n>"] = cmp.mapping.select_next_item(),
-          ['<C-u>'] = cmp.mapping.scroll_docs(-4),
-          ['<C-d>'] = cmp.mapping.scroll_docs(4),
-          ['<C-g>'] = cmp.mapping.abort(),
-          ['<Tab>'] = cmp.mapping.confirm({ select = true }),
-          ['<CR>'] = cmp.config.disable
-        }),
-        sources = cmp.config.sources({
-          { name = 'nvim_lsp' },
-          { name = 'nvim_lua' },
-          { name = 'ultisnips' },
-          { name = 'path' },
-        }, {
-          { name = 'buffer', keyword_length = 5 },
-        })
-      })
-
-      cmp.setup.cmdline('/', {
-        mapping = cmp.mapping.preset.cmdline(),
-        sources = {
-          { name = 'buffer' }
-        }
-      })
-
-      cmp.setup.cmdline(':', {
-        mapping = cmp.mapping.preset.cmdline(),
-        sources = cmp.config.sources({
-          { name = 'path' }
-        }, {
-          { name = 'cmdline' }
-        })
-      })
-    end
-  },
-
-  {
     'nvim-telescope/telescope-project.nvim',
     dependencies = {
       'nvim-telescope/telescope.nvim',
@@ -162,20 +107,15 @@ require("lazy").setup({
   },
 
   {
+    -- Kept for its query corpus only; parsers are provisioned by Nix, so
+    -- :TSInstall is never used and nothing is installed at runtime.
     "nvim-treesitter/nvim-treesitter",
-    config = function()
-      require("nvim-treesitter.configs").setup({
-        highlight = {
-          enable = true,
-        },
-        ensure_installed = {
-          "vimdoc",
-          "luadoc",
-          "vim",
-          "lua",
-          "markdown",
-        },
-      })
+    branch = "main",
+    lazy = false,
+    config = function(plugin)
+      -- Expose the bundled queries for all supported languages directly.
+      -- Normally :TSInstall copies these per-language into install_dir.
+      vim.opt.runtimepath:append(plugin.dir .. "/runtime")
     end,
   },
 
@@ -404,6 +344,72 @@ require("lazy").setup({
   }
 })
 
+-- LSP ==============================================
+-- ==================================================
+
+vim.lsp.config("lua_ls", {
+  cmd = { "lua-language-server" },
+  filetypes = { "lua" },
+  root_markers = { ".luarc.json", ".luarc.jsonc", ".git" },
+  settings = {
+    Lua = {
+      runtime = { version = "LuaJIT" },
+      diagnostics = { globals = { "vim" } },
+      workspace = {
+        library = vim.api.nvim_get_runtime_file("", true),
+        checkThirdParty = false,
+      },
+      telemetry = { enable = false },
+    },
+  },
+})
+
+vim.lsp.enable("lua_ls")
+
+-- Treesitter =======================================
+-- ==================================================
+
+-- lazy.nvim sets performance.rtp.reset, which strips the stock site directory
+-- from 'runtimepath'. Add it back here, after lazy.setup() has returned, so
+-- Nix-provided parsers in site/parser/*.so are found. Appending inside a
+-- plugin config is too early -- lazy rebuilds 'runtimepath' afterwards.
+vim.opt.runtimepath:append(vim.fn.stdpath("data") .. "/site")
+
+-- Highlighting is opt-in per filetype rather than global: markdown for its
+-- code-fence injections, lua because nvim-autopairs' ts_conds rules query it.
+-- pcall keeps a missing parser from erroring the autocmd.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "markdown", "lua" },
+  callback = function(args)
+    pcall(vim.treesitter.start, args.buf)
+  end,
+})
+
+-- Completion =======================================
+-- ==================================================
+
+vim.opt.completeopt = { "menuone", "noselect", "popup", "fuzzy" }
+vim.opt.wildoptions = "pum"
+vim.opt.winborder = "rounded"
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if client and client:supports_method("textDocument/completion") then
+      vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
+    end
+  end,
+})
+
+-- <Tab> confirms the popup selection, selecting the first entry if none is
+-- highlighted yet; otherwise it inserts a plain tab.
+vim.keymap.set("i", "<Tab>", function()
+  if vim.fn.pumvisible() == 0 then
+    return "<Tab>"
+  end
+  return vim.fn.complete_info({ "selected" }).selected == -1 and "<C-n><C-y>" or "<C-y>"
+end, { expr = true })
+
 function make_noremap_opts(description)
   return { noremap = true, desc = description }
 end
@@ -468,8 +474,8 @@ vim.keymap.set("n", "<leader>w=", "<C-w>=", opts)
 
 vim.keymap.set("n", "<leader>sc", ":noh<cr>", opts)
 vim.keymap.set("n", "<leader>saf", ":Telescope grep_string<cr>", opts)
-vim.keymap.set("n", "<leader>st", ":CocOutline<cr>", opts)
-vim.keymap.set("n", "<leader>si", ":CocList outline<cr>", opts)
+vim.keymap.set("n", "<leader>st", vim.lsp.buf.document_symbol, make_noremap_opts("Document Symbols"))
+vim.keymap.set("n", "<leader>si", ":Telescope lsp_document_symbols<cr>", make_noremap_opts("Search Symbols"))
 
 -- Git ==============================================
 -- ==================================================
@@ -509,40 +515,43 @@ vim.keymap.set("i", "<C-b>", "<left>", opts)
 vim.keymap.set("i", "<C-l>", "<esc>zza", opts)
 vim.keymap.set("n", "<C-l>", "zz", opts)
 
-vim.encoding = "utf-8"
-vim.fileencoding = "utf-8"
-vim.mouse = "a"
+-- These must all go through vim.opt. A bare `vim.foo = ...` just sets a field
+-- on the vim table and is silently ignored -- and in the case of `vim.list` it
+-- overwrites a stdlib module that core uses in vim/lsp/semantic_tokens.lua.
+vim.opt.encoding = "utf-8"
+vim.opt.fileencoding = "utf-8"
+vim.opt.mouse = "a"
 vim.opt.showmode = false
 vim.opt.showcmd = false
-vim.signcolumn = "yes"
-vim.updatetime = 250
-vim.timeoutlen = 300
+vim.opt.signcolumn = "yes"
+vim.opt.updatetime = 250
+vim.opt.timeoutlen = 300
 vim.schedule(function()
   vim.opt.clipboard = 'unnamedplus'
 end)
-vim.breakindent = true
-vim.undofile = true
-vim.nonumber = true
-vim.guioptions = ""
-vim.splitright = true
-vim.splitbelow = true
+vim.opt.breakindent = true
+vim.opt.undofile = true
+vim.opt.number = false
+vim.opt.guioptions = ""
+vim.opt.splitright = true
+vim.opt.splitbelow = true
 vim.opt.swapfile = false
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
 vim.opt.smartindent = true
 vim.opt.tabstop = 2
-vim.bo.softtabstop = 2
+vim.opt.softtabstop = 2
 vim.opt.smarttab = true
 vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
-vim.inccommand = "split"
-vim.cursorline = false
-vim.scrolloff = 3
-vim.sidescrolloff = 5
+vim.opt.inccommand = "split"
+vim.opt.cursorline = false
+vim.opt.scrolloff = 3
+vim.opt.sidescrolloff = 5
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
-vim.list = true
-vim.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
-vim.history = 1000
+vim.opt.list = true
+vim.opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
+vim.opt.history = 1000
 vim.opt.fillchars = { eob = ' ' }
 
 vim.cmd [[
