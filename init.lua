@@ -102,6 +102,11 @@ end
 -- SPC s c bindings reach the <Plug> maps below through `vscode-neovim.send`.
 -- VS Code's keybindings.json keeps only what Neovim never sees: Cmd/Alt chords
 -- and keys pressed outside a text editor.
+-- Rule: when a VS Code extension and a Neovim plugin cover the same feature
+-- (language support such as Java, CodeQL, git, debugging...), VS Code uses the
+-- extension. Don't load the plugin here; bind its keys to the extension's
+-- commands instead (a VSpaceCode override or require("vscode").action).
+-- Only plain text-editing plugins with no VS Code equivalent belong below.
 if vim.g.vscode then
   -- `,` is VSpaceCode's major-mode menu here, so the local leader moves off it;
   -- otherwise vim-sexp's `,`-prefixed maps would make `,` wait for 'timeoutlen'.
