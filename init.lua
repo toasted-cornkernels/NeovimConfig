@@ -258,13 +258,15 @@ vim.diagnostic.config({
 
 -- Completion =======================================
 -- ==================================================
--- Stock 'autocomplete' drives the popup; 'complete' starts with `o` so LSP
--- (via 'omnifunc') is consulted first, then buffer words.
+-- Stock 'autocomplete' drives the popup. Like corfu + cape, where the first
+-- capf with results wins: LSP buffers complete from the server only (see
+-- LspAttach), others from words in visible windows (cape-dabbrev). Prefix
+-- matching like the `basic` completion style; no fuzzy noise.
 
 vim.o.autocomplete = true
 vim.o.autocompletedelay = 200
-vim.o.complete = "o,.,w,b,u"
-vim.opt.completeopt = { "menuone", "noselect", "popup", "fuzzy" }
+vim.o.complete = ".,w"
+vim.opt.completeopt = { "menuone", "noselect", "popup" }
 
 autocmd("LspAttach", {
   callback = function(args)
@@ -273,6 +275,7 @@ autocmd("LspAttach", {
       -- Sets 'omnifunc' and handles snippets/additionalTextEdits on accept;
       -- triggering is left to 'autocomplete'.
       vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = false })
+      vim.bo[args.buf].complete = "o"
     end
   end,
 })
