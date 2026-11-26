@@ -130,6 +130,11 @@ if vim.g.vscode then
   map({ "n", "x", "o" }, "<Plug>(jump-line)", jump_to("^"), "Jump to Line")
   map({ "n", "x", "o" }, "<Plug>(jump-word)", jump_to([[\<\w]]), "Jump to Word")
   map("n", "<Plug>(clear-highlight)", "<Cmd>nohlsearch<CR>", "Clear Highlight")
+  -- vscode-neovim mirrors 'number'/'relativenumber' into VS Code's line numbers.
+  map("n", "<Plug>(toggle-line-numbers)", function()
+    local on = not (vim.wo.number or vim.wo.relativenumber)
+    vim.wo.number, vim.wo.relativenumber = on, false
+  end, "Toggle Line Numbers")
   map("n", "<Esc>", "<Cmd>nohlsearch<CR>", "Clear Highlight")
 
   local function vscode_action(...)
