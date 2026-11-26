@@ -993,7 +993,8 @@ require("which-key").setup({
     { "<leader>at", group = "Terminal" },
     { "<leader>ats", group = "Shell" },
     { "<leader>b", group = "Buffers" },
-    { "<leader>c", group = "Compile/Dir" },
+    { "<leader>c", group = "Compile/Comments", mode = { "n", "x" } },
+    { "<leader>cd", group = "Directory" },
     { "<leader>D", group = "Desktop" },
     { "<leader>f", group = "Files", mode = { "n", "x" } },
     { "<leader>fb", group = "Bookmarks" },
@@ -1013,11 +1014,13 @@ require("which-key").setup({
     { "<leader>$s", group = "Start" },
     { "<leader>p", group = "Project" },
     { "<leader>q", group = "Quit" },
+    { "<leader>r", group = "Resume/Recent" },
     { "<leader>s", group = "Search", mode = { "n", "x" } },
     { "<leader>S", group = "Packages" },
     { "<leader>Sp", group = "Package" },
     { "<leader>t", group = "Tabs" },
     { "<leader>T", group = "Toggles" },
+    { "<leader>v", group = "Expand Region", mode = { "n", "x" } },
     { "<leader>w", group = "Windows" },
     { "<leader>x", group = "Text" },
     { "<leader>xi", group = "Insert" },
@@ -1094,6 +1097,10 @@ map("n", "<leader>b=", format_buffer, "Format Buffer")
 map("n", "<leader>cdc", "<Cmd>lcd %:p:h<CR>", "lcd to Buffer Dir")
 cmdline("n", "<leader>cdt", "lcd ", "lcd")
 map("n", "<leader>cC", "<Cmd>make<CR>", "Compile")
+map("n", "<leader>cl", "gcc", "Toggle Comment", { remap = true })
+map("x", "<leader>cl", "gc", "Toggle Comment", { remap = true })
+map("n", "<leader>cn", "<Cmd>cnext<CR>", "Next Error")
+map("n", "<leader>cp", "<Cmd>cprevious<CR>", "Previous Error")
 
 -- D: desktop (sessions)
 map("n", "<leader>Ds", session_save, "Save Session")
@@ -1434,6 +1441,58 @@ map("n", "<leader>saf", tb.grep_string, "Grep Word")
 map("n", "<leader>st", vim.lsp.buf.document_symbol, "Document Symbols")
 map("n", "<leader>si", tb.lsp_document_symbols, "Search Symbols")
 map("n", "<leader>ss", tb.current_buffer_fuzzy_find, "Search Buffer")
+map("n", "<leader>sj", tb.lsp_document_symbols, "Jump to Symbol")
+map("n", "<leader>sJ", tb.lsp_dynamic_workspace_symbols, "Jump to Project Symbol")
+map("n", "<leader>sr", tb.lsp_references, "References")
+map("n", "<leader>sp", function()
+  tb.live_grep({ cwd = project_root() })
+end, "Search Project")
+
+-- Word under the cursor, or the visual selection.
+local function grep_project_word()
+  local search
+  local mode = fn.mode()
+  if mode:find("^[vV\22]") then
+    search = table.concat(fn.getregion(fn.getpos("v"), fn.getpos("."), { type = mode }), "\n")
+    api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+  end
+  tb.grep_string({ cwd = project_root(), search = search })
+end
+map({ "n", "x" }, "<leader>sP", grep_project_word, "Search Project for Word")
+map({ "n", "x" }, "<leader>*", grep_project_word, "Search Project for Word")
+
+-- Like iedit: LSP rename if available, else a prefilled :substitute.
+map("n", "<leader>se", function()
+  if next(vim.lsp.get_clients({ bufnr = 0, method = "textDocument/rename" })) then
+    vim.lsp.buf.rename()
+  else
+    local word = fn.escape(fn.expand("<cword>"), [[/\]])
+    api.nvim_feedkeys(":%s/\\<" .. word .. "\\>//gI" .. vim.keycode("<Left><Left><Left>"), "n", false)
+  end
+end, "Edit Symbol")
+
+-- r: resume / recent
+map("n", "<leader>rl", tb.resume, "Resume Last Search")
+map("n", "<leader>rb", function()
+  tb.buffers({ sort_mru = true, ignore_current_buffer = true })
+end, "Recent Buffers")
+
+-- v: expand region via built-in incremental selection (treesitter, else LSP)
+map("n", "<leader>vv", "van", "Grow Selection", { remap = true })
+map("x", "<leader>vv", "an", "Grow Selection", { remap = true })
+map("x", "<leader>vV", "in", "Shrink Selection", { remap = true })
+
+map("n", "<leader>?", tb.keymaps, "Search Keybindings")
+-- A shell in the buffer's directory: a tmux pane below if inside tmux
+-- (keeping Copilot CLI's pane intact), else a new Terminal.app window.
+map("n", '<leader>"', function()
+  local dir = buffer_dir()
+  if vim.env.TMUX then
+    vim.system({ "tmux", "split-window", "-v", "-t", vim.env.TMUX_PANE, "-c", dir })
+  else
+    vim.system({ "open", "-a", "Terminal", dir })
+  end
+end, "External Terminal")
 
 -- t: tabs
 map("n", "<leader>tp", "<Cmd>tabprevious<CR>", "Previous Tab")
