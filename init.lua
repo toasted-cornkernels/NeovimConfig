@@ -339,9 +339,38 @@ end
 -- ==================================================
 
 local telescope = require("telescope")
+local fb_actions = require("telescope._extensions.file_browser.actions")
+
+-- Opens the directory being browsed in netrw, like find-file on a directory
+-- opening dired.
+local function fb_open_in_netrw(prompt_bufnr)
+  local path = require("telescope.actions.state").get_current_picker(prompt_bufnr).finder.path
+  require("telescope.actions").close(prompt_bufnr)
+  vim.cmd.edit(fn.fnameescape(path))
+end
+
 telescope.setup({
   extensions = {
-    file_browser = { hijack_netrw = false }, -- netrw stays for vim-vinegar's `-`
+    -- Mirrors Emacs find-file + dired (`ls -al --group-directories-first`)
+    -- with vertico-directory keys.
+    file_browser = {
+      hijack_netrw = false, -- netrw stays for vim-vinegar's `-`
+      grouped = true,
+      hidden = { file_browser = true, folder_browser = true },
+      respect_gitignore = false,
+      no_ignore = true,
+      prompt_path = true,
+      mappings = {
+        i = {
+          ["<C-l>"] = fb_actions.goto_parent_dir,
+          ["<M-CR>"] = fb_open_in_netrw,
+        },
+        n = {
+          ["-"] = fb_actions.goto_parent_dir,
+          ["<M-CR>"] = fb_open_in_netrw,
+        },
+      },
+    },
   },
 })
 telescope.load_extension("file_browser")
