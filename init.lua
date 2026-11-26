@@ -1488,7 +1488,7 @@ map("n", "<leader>?", tb.keymaps, "Search Keybindings")
 map("n", '<leader>"', function()
   local dir = buffer_dir()
   if vim.env.TMUX then
-    vim.system({ "tmux", "split-window", "-v", "-t", vim.env.TMUX_PANE, "-c", dir })
+    vim.system({ "tmux", "split-window", "-v", "-t", vim.env.TMUX_PANE or "", "-c", dir })
   else
     vim.system({ "open", "-a", "Terminal", dir })
   end
