@@ -1186,14 +1186,86 @@ local function agent_slash(name, chat)
   local item = { label = name, config = require("codecompanion.config").interactions.chat.slash_commands[name] }
   require("codecompanion.interactions.chat.slash_commands").new():execute(item, chat)
 end
--- agent-shell-resume-session: fresh chat, then pick a past Copilot session.
+-- Loads a past ACP session into `chat`, in that session's directory.
+local function agent_load_session(chat, session)
+  local conn = chat.acp_connection
+  if session.cwd and fn.isdirectory(session.cwd) == 1 then
+    api.nvim_win_call(chat.ui.winnr, function()
+      vim.cmd.lcd(fn.fnameescape(session.cwd))
+    end)
+  end
+  local updates = {}
+  local ok = conn:load_session(session.sessionId, {
+    on_session_update = function(update, opts)
+      table.insert(updates, { update = update, session_id = opts and opts.session_id })
+    end,
+  })
+  if not ok then
+    return vim.notify("Failed to load session", vim.log.levels.ERROR)
+  end
+  require("codecompanion.interactions.chat.acp.commands").link_buffer_to_session(chat.bufnr, conn.session_id)
+  require("codecompanion.interactions.chat.acp.render").restore_session(chat, updates)
+  if session.title then
+    chat:set_title(session.title)
+  end
+end
+-- agent-shell-resume-session. Unlike CodeCompanion's /resume, lists sessions
+-- from every directory, not just the current one.
+local function agent_pick_session(chat, close_on_cancel)
+  local function cancel()
+    if close_on_cancel then
+      chat:close()
+    end
+  end
+  local tries = 0
+  local function pick()
+    local conn = chat.acp_connection
+    -- Wait for the chat's own session first, or it would replace the loaded one.
+    if not (conn and conn:is_ready() and conn.session_id) then
+      tries = tries + 1
+      if tries > 120 then
+        cancel()
+        return vim.notify("Agent did not connect", vim.log.levels.WARN)
+      end
+      return vim.defer_fn(pick, 250)
+    end
+    require("codecompanion.utils.async").sync(function()
+      local res = conn:send_rpc_request({ method = "session/list", params = vim.empty_dict(), timeout = 30000 })
+      vim.schedule(function()
+        local sessions = vim.tbl_filter(function(s)
+          return s.sessionId ~= conn.session_id
+        end, res and res.sessions or {})
+        if #sessions == 0 then
+          cancel()
+          return vim.notify("No previous sessions", vim.log.levels.INFO)
+        end
+        table.sort(sessions, function(a, b)
+          return (a.updatedAt or "") > (b.updatedAt or "")
+        end)
+        vim.ui.select(sessions, {
+          prompt = "Resume Session",
+          format_item = function(s)
+            local ts = s.updatedAt and require("codecompanion.utils").timestamp_from_iso(s.updatedAt)
+            local when = ts and os.date("%Y-%m-%d %H:%M", ts) or "?"
+            return string.format("%s  %s  (%s)", when, s.title or s.sessionId, fn.fnamemodify(s.cwd or "?", ":~"))
+          end,
+        }, function(s)
+          if s then
+            agent_load_session(chat, s)
+          else
+            cancel()
+          end
+        end)
+      end)
+    end)()
+  end
+  pick()
+end
 local function agent_resume()
   local chat = cc().chat()
-  if not chat then
-    return
+  if chat then
+    agent_pick_session(chat, true)
   end
-  require("codecompanion.interactions.chat.acp.handler").new(chat):ensure_connection()
-  agent_slash("resume", chat)
 end
 map("n", "<leader>$$", agent_shell, "Agent Shell")
 map("n", "<leader>$t", "<Cmd>CodeCompanionChat Toggle<CR>", "Toggle")
@@ -1242,7 +1314,10 @@ api.nvim_create_autocmd("FileType", {
       require("codecompanion.interactions.chat.keymaps").change_adapter.callback(agent_chat())
     end, "Session Model")
     bmap("sr", function()
-      agent_slash("resume")
+      local chat = agent_chat()
+      if chat then
+        agent_pick_session(chat, false)
+      end
     end, "Resume Session")
   end,
 })
