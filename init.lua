@@ -392,17 +392,36 @@ local function file_browser(opts)
   telescope.extensions.file_browser.file_browser(opts)
 end
 
-local function buffer_dir()
-  local name = api.nvim_buf_get_name(0)
-  if name == "" or vim.bo.buftype ~= "" then
-    return vim.uv.cwd()
+-- The buffer's directory with symlinks resolved, so ~/.config/nvim/init.lua
+-- maps to its real repo (NeovimConfig) rather than the Nix store link.
+local function buffer_dir(buf)
+  buf = buf or 0
+  local name = api.nvim_buf_get_name(buf)
+  if name == "" or vim.bo[buf].buftype ~= "" then
+    return fn.getcwd()
   end
-  return vim.fs.dirname(name)
+  local dir = vim.fs.dirname(vim.uv.fs_realpath(name) or name)
+  return vim.uv.fs_realpath(dir) or dir
 end
 
 local function project_root()
-  return vim.fs.root(0, ".git") or vim.uv.cwd()
+  return vim.fs.root(buffer_dir(), ".git") or fn.getcwd()
 end
+
+-- Each file's window works from that file's directory, like default-directory.
+api.nvim_create_autocmd("BufEnter", {
+  group = api.nvim_create_augroup("BufferDirectory", { clear = true }),
+  callback = function(ev)
+    local name = api.nvim_buf_get_name(ev.buf)
+    if name == "" or vim.bo[ev.buf].buftype ~= "" or fn.isdirectory(name) == 1 then
+      return
+    end
+    local dir = buffer_dir(ev.buf)
+    if fn.isdirectory(dir) == 1 and dir ~= fn.getcwd() then
+      vim.cmd.lcd(fn.fnameescape(dir))
+    end
+  end,
+})
 
 require("flash").setup({
   -- Only on explicit SPC j j; f/t/F/T and / stay stock.
