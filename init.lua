@@ -98,10 +98,14 @@ end
 -- VS Code (vscode-neovim) ==========================
 -- ==================================================
 -- There, Neovim only edits text; VS Code owns UI, LSP, completion, pickers and
--- git. SPC and `,` open VSpaceCode (bound in VS Code's keybindings.json), and
--- its SPC j j/l/w and SPC s c bindings reach the <Plug> maps below through
--- `vscode-neovim.send`.
+-- git. SPC and `,` open VSpaceCode from the maps below, and its SPC j j/l/w and
+-- SPC s c bindings reach the <Plug> maps below through `vscode-neovim.send`.
+-- VS Code's keybindings.json keeps only what Neovim never sees: Cmd/Alt chords
+-- and keys pressed outside a text editor.
 if vim.g.vscode then
+  -- `,` is VSpaceCode's major-mode menu here, so the local leader moves off it;
+  -- otherwise vim-sexp's `,`-prefixed maps would make `,` wait for 'timeoutlen'.
+  vim.g.maplocalleader = "\\"
   vim.pack.add({
     gh("folke/flash.nvim"),
     gh("tpope/vim-repeat"),
@@ -127,6 +131,18 @@ if vim.g.vscode then
   map({ "n", "x", "o" }, "<Plug>(jump-word)", jump_to([[\<\w]]), "Jump to Word")
   map("n", "<Plug>(clear-highlight)", "<Cmd>nohlsearch<CR>", "Clear Highlight")
   map("n", "<Esc>", "<Cmd>nohlsearch<CR>", "Clear Highlight")
+
+  local function vscode_action(...)
+    require("vscode").action(...)
+  end
+  map({ "n", "x" }, "<Space>", function()
+    vscode_action("vspacecode.space")
+  end, "VSpaceCode")
+  map({ "n", "x" }, ",", function()
+    vscode_action("runCommands", {
+      args = { commands = { "vspacecode.space", { command = "whichkey.triggerKey", args = "m" } } },
+    })
+  end, "VSpaceCode Major Mode")
   return
 end
 
