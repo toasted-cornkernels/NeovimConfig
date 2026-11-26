@@ -140,7 +140,7 @@ vim.pack.add({
   { src = gh("nvim-orgmode/orgmode"), version = "3bfd89bcfb210c5768be41f00c51f3f4721e55e7" },
 
   -- CodeQL
-  gh("pwntester/codeql.nvim"),
+  gh("jeongsoolee09/codeql.nvim"),
 
   -- AI: Copilot CLI beside the editor (tmux split or terminal), and Copilot
   -- CLI as an in-editor agent over ACP (`copilot --acp`).
@@ -933,7 +933,9 @@ require("which-key").setup({
     { "<leader>i", group = "Imenu" },
     { "<leader>j", group = "Jump" },
     { "<leader>k", group = "Lisp" },
-    { "<leader>L", group = "Copilot", mode = { "n", "x" } },
+    { "<leader>L", group = "Copilot CLI", mode = { "n", "x" } },
+    { "<leader>$", group = "Agent Shell", mode = { "n", "x" } },
+    { "<leader>$s", group = "Start" },
     { "<leader>p", group = "Project" },
     { "<leader>q", group = "Quit" },
     { "<leader>s", group = "Search", mode = { "n", "x" } },
@@ -1120,54 +1122,130 @@ map("n", "<leader>jL", function()
   tb.live_grep({ grep_open_files = true })
 end, "Search Open Buffers")
 
--- L: Copilot CLI. Lowercase drives the `copilot` beside the editor
--- (sidekick; keys follow Emacs' gptel); LL/Lc/LA the in-editor ACP agent
--- (CodeCompanion, Emacs' agent-shell).
+-- L: Copilot CLI beside the editor (sidekick); keys follow Emacs' gptel.
 map("n", "<leader>Ll", function()
   sidekick.toggle({ filter = copilot_filter(), focus = true })
 end, "Copilot CLI")
--- Inside an Agent Shell buffer, Ls/Lq act on that chat like gptel-send/abort.
-local function agent_chat()
-  return vim.bo.filetype == "codecompanion" and require("codecompanion").buf_get_chat(api.nvim_get_current_buf())
-end
-local function agent_send(chat)
-  vim.cmd("stopinsert")
-  chat:submit()
-end
-map("n", "<leader>Ls", function()
-  local chat = agent_chat()
-  if chat then
-    agent_send(chat)
-  else
-    copilot_send("{this}")()
-  end
-end, "Send")
+map("n", "<leader>Ls", copilot_send("{this}"), "Send Position")
 map("x", "<leader>Ls", copilot_send("{selection}"), "Send Selection")
-map("n", "<leader>L<CR>", function()
-  local chat = require("codecompanion").last_chat()
-  if chat then
-    agent_send(chat)
-  else
-    vim.notify("No Agent Shell chat", vim.log.levels.WARN)
-  end
-end, "Send Agent Shell")
 map({ "n", "x" }, "<leader>L.", copilot_send("{position}"), "Add Position")
 map("n", "<leader>La", copilot_send("{file}"), "Add File")
 map("n", "<leader>Ld", copilot_send("{diagnostics}"), "Add Diagnostics")
 map({ "n", "x" }, "<leader>Lm", sidekick.prompt, "Prompt Menu")
 map("n", "<leader>Lt", sidekick.select, "Select Tool/Session")
 map("n", "<leader>Lq", function()
-  local chat = agent_chat()
-  if chat then
-    chat:stop()
-  else
-    sidekick.close({ filter = copilot_filter() })
-  end
-end, "Abort / Close Session")
+  sidekick.close({ filter = copilot_filter() })
+end, "Close Session")
 map({ "n", "x" }, "<leader>Ly", copilot_yank_reference, "Yank Reference")
-map("n", "<leader>LL", "<Cmd>CodeCompanionChat Toggle<CR>", "Agent Shell")
-map("x", "<leader>Lc", ":CodeCompanionChat Add<CR>", "Add to Agent Shell")
-map({ "n", "x" }, "<leader>LA", "<Cmd>CodeCompanionActions<CR>", "Agent Shell Actions")
+
+-- $: in-editor ACP agent (CodeCompanion); keys follow Emacs' agent-shell.
+local function cc()
+  return require("codecompanion")
+end
+local function agent_chat()
+  if vim.bo.filetype == "codecompanion" then
+    return cc().buf_get_chat(api.nvim_get_current_buf())
+  end
+  return cc().last_chat()
+end
+local function agent_shell()
+  local chat = cc().last_chat()
+  if chat then
+    cc().restore(chat.bufnr)
+  else
+    cc().chat()
+  end
+end
+local function agent_start(adapter)
+  return function()
+    cc().chat({ params = { adapter = adapter } })
+  end
+end
+local function agent_switch_buffer()
+  local chats = cc().buf_get_chat()
+  if #chats == 0 then
+    return vim.notify("No Agent Shell chats", vim.log.levels.WARN)
+  end
+  vim.ui.select(chats, {
+    prompt = "Agent Shell",
+    format_item = function(c)
+      return string.format("%s [%s]", c.title or ("Chat " .. c.chat.id), c.chat.adapter.formatted_name)
+    end,
+  }, function(c)
+    if c then
+      cc().restore(c.chat.bufnr)
+    end
+  end)
+end
+-- Runs a built-in slash command (e.g. /resume) against a chat.
+local function agent_slash(name, chat)
+  chat = chat or agent_chat()
+  if not chat then
+    return vim.notify("No Agent Shell chat", vim.log.levels.WARN)
+  end
+  local item = { label = name, config = require("codecompanion.config").interactions.chat.slash_commands[name] }
+  require("codecompanion.interactions.chat.slash_commands").new():execute(item, chat)
+end
+-- agent-shell-resume-session: fresh chat, then pick a past Copilot session.
+local function agent_resume()
+  local chat = cc().chat()
+  if not chat then
+    return
+  end
+  require("codecompanion.interactions.chat.acp.handler").new(chat):ensure_connection()
+  agent_slash("resume", chat)
+end
+map("n", "<leader>$$", agent_shell, "Agent Shell")
+map("n", "<leader>$t", "<Cmd>CodeCompanionChat Toggle<CR>", "Toggle")
+map("n", "<leader>$b", agent_switch_buffer, "Switch Buffer")
+map("n", "<leader>$n", "<Cmd>CodeCompanionChat<CR>", "New Shell")
+map("n", "<leader>$R", agent_resume, "Resume Session")
+map("n", "<leader>$sc", agent_start("copilot_acp"), "Copilot")
+map("n", "<leader>$sC", agent_start("claude_code"), "Claude Code")
+map("n", "<leader>$so", agent_start("codex"), "Codex")
+map("n", "<leader>$sg", agent_start("gemini_cli"), "Gemini")
+map("n", "<leader>$f", "<Cmd>%CodeCompanionChat Add<CR>", "Send File")
+map("x", "<leader>$r", ":CodeCompanionChat Add<CR>", "Send Region")
+map({ "n", "x" }, "<leader>$a", "<Cmd>CodeCompanionActions<CR>", "Actions")
+
+-- Local leader inside the chat buffer (agent-shell-mode-map).
+api.nvim_create_autocmd("FileType", {
+  group = api.nvim_create_augroup("AgentShellKeys", { clear = true }),
+  pattern = "codecompanion",
+  callback = function(ev)
+    local function bmap(lhs, rhs, desc)
+      map("n", "<localleader>" .. lhs, rhs, desc, { buffer = ev.buf })
+    end
+    local function with_chat(method)
+      return function()
+        local chat = agent_chat()
+        if chat then
+          if method == "submit" then
+            vim.cmd("stopinsert")
+          end
+          chat[method](chat)
+        end
+      end
+    end
+    bmap("<CR>", with_chat("submit"), "Submit")
+    bmap("k", with_chat("stop"), "Interrupt")
+    bmap("f", function()
+      agent_slash("fork")
+    end, "Fork")
+    bmap("sm", function()
+      agent_slash("acp_session_options")
+    end, "Session Mode/Options")
+    bmap("so", function()
+      agent_slash("acp_session_options")
+    end, "Session Config Option")
+    bmap("sv", function()
+      require("codecompanion.interactions.chat.keymaps").change_adapter.callback(agent_chat())
+    end, "Session Model")
+    bmap("sr", function()
+      agent_slash("resume")
+    end, "Resume Session")
+  end,
+})
 
 -- p: project
 map("n", "<leader>pp", function()
