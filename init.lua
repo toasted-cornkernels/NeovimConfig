@@ -95,6 +95,41 @@ local function gh(repo)
   return "https://github.com/" .. repo
 end
 
+-- VS Code (vscode-neovim) ==========================
+-- ==================================================
+-- There, Neovim only edits text; VS Code owns UI, LSP, completion, pickers and
+-- git. SPC and `,` open VSpaceCode (bound in VS Code's keybindings.json), and
+-- its SPC j j/l/w and SPC s c bindings reach the <Plug> maps below through
+-- `vscode-neovim.send`.
+if vim.g.vscode then
+  vim.pack.add({
+    gh("folke/flash.nvim"),
+    gh("tpope/vim-repeat"),
+    gh("tpope/vim-surround"),
+    gh("guns/vim-sexp"),
+    gh("tpope/vim-sexp-mappings-for-regular-people"),
+  }, { confirm = false })
+
+  require("flash").setup({
+    modes = { search = { enabled = false }, char = { enabled = false } },
+  })
+
+  local function jump(opts)
+    return function()
+      require("flash").jump(opts)
+    end
+  end
+  local function jump_to(pattern)
+    return jump({ pattern = pattern, search = { mode = "search", max_length = 0 }, label = { after = { 0, 0 } } })
+  end
+  map({ "n", "x", "o" }, "<Plug>(jump-char)", jump(), "Jump to Char")
+  map({ "n", "x", "o" }, "<Plug>(jump-line)", jump_to("^"), "Jump to Line")
+  map({ "n", "x", "o" }, "<Plug>(jump-word)", jump_to([[\<\w]]), "Jump to Word")
+  map("n", "<Plug>(clear-highlight)", "<Cmd>nohlsearch<CR>", "Clear Highlight")
+  map("n", "<Esc>", "<Cmd>nohlsearch<CR>", "Clear Highlight")
+  return
+end
+
 vim.pack.add({
   -- Libraries
   gh("nvim-lua/plenary.nvim"),
