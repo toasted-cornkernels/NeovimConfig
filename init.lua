@@ -141,6 +141,11 @@ vim.pack.add({
 
   -- CodeQL
   gh("pwntester/codeql.nvim"),
+
+  -- AI: Copilot CLI beside the editor (tmux split or terminal), and Copilot
+  -- CLI as an in-editor agent over ACP (`copilot --acp`).
+  gh("folke/sidekick.nvim"),
+  gh("olimorris/codecompanion.nvim"),
 }, { confirm = false })
 
 -- Stock plugins shipped with Neovim but not loaded by default.
@@ -621,7 +626,8 @@ require("orgmode").setup({
 -- 2. This instance advertises its RPC socket as the tmux window option
 --    @nvim_server, so Copilot (or anything in the window) can open files here:
 --      nvim --server "$(tmux show -wv @nvim_server)" --remote-tab FILE
--- 3. SPC L sends context to the Copilot pane (mirrors Emacs' gptel bindings).
+-- 3. SPC L drives Copilot CLI (mirrors Emacs' gptel bindings): beside the
+--    editor via sidekick.nvim, or in-editor over ACP via CodeCompanion.
 
 vim.o.autoread = true
 autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermLeave" }, {
@@ -672,67 +678,6 @@ if vim.env.TMUX and vim.env.TMUX_PANE then
   })
 end
 
--- Finds the pane running `copilot`: this window first, then this session.
-local function copilot_pane()
-  if not vim.env.TMUX then
-    vim.notify("Not running inside tmux", vim.log.levels.WARN)
-    return nil
-  end
-  for _, scope in ipairs({ {}, { "-s" } }) do
-    local args = vim.list_extend({ "list-panes", "-t", vim.env.TMUX_PANE }, scope)
-    local out = tmux(vim.list_extend(args, { "-F", "#{pane_id}\t#{pane_current_command}\t#{pane_current_path}" }))
-    for line in (out or ""):gmatch("[^\n]+") do
-      local id, command, path = unpack(vim.split(line, "\t", { plain = true }))
-      if id ~= vim.env.TMUX_PANE and command:match("copilot") then
-        return { id = id, path = path }
-      end
-    end
-  end
-  return nil
-end
-
-local function focus_pane(pane)
-  tmux({ "select-window", "-t", pane.id })
-  tmux({ "select-pane", "-t", pane.id })
-end
-
-local function require_copilot_pane()
-  local pane = copilot_pane()
-  if not pane and vim.env.TMUX then
-    vim.notify("No tmux pane running copilot (SPC L l starts one)", vim.log.levels.WARN)
-  end
-  return pane
-end
-
--- Path for an @-mention, relative to Copilot's working directory if possible.
-local function mention(pane, path)
-  local rel = vim.fs.relpath(pane.path, path)
-  return "@" .. (rel or path)
-end
-
-local function copilot_open()
-  local pane = copilot_pane()
-  if pane then
-    focus_pane(pane)
-  elseif vim.env.TMUX then
-    tmux({ "split-window", "-h", "-t", vim.env.TMUX_PANE, "-c", project_root(), "copilot" })
-  end
-end
-
-local function copilot_send_keys(pane, text)
-  tmux({ "send-keys", "-t", pane.id, "-l", text })
-end
-
--- Bracketed paste so multi-line text isn't submitted line by line.
-local function copilot_paste(pane, text)
-  local _, err = tmux({ "load-buffer", "-b", "nvim-copilot", "-" }, text)
-  if err then
-    vim.notify(err, vim.log.levels.ERROR)
-    return
-  end
-  tmux({ "paste-buffer", "-p", "-d", "-b", "nvim-copilot", "-t", pane.id })
-end
-
 local function current_file()
   local name = api.nvim_buf_get_name(0)
   if name == "" or vim.bo.buftype ~= "" then
@@ -742,64 +687,68 @@ local function current_file()
   return name
 end
 
-local function exit_visual()
-  if fn.mode():match("[vV\22]") then
-    api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+-- sidekick.nvim runs `copilot` in a tmux split next to this pane (or a
+-- Neovim terminal outside tmux), attaches to one already running, and renders
+-- context as Copilot @-mentions ({file}, {position}, {selection}, ...).
+require("sidekick").setup({
+  nes = { enabled = false }, -- needs copilot-language-server
+  cli = {
+    watch = false, -- the autoread timer above already reloads edited files
+    mux = { enabled = vim.env.TMUX ~= nil, create = "split" },
+    picker = "telescope",
+    tools = {
+      -- Copilot's prompt drops the trailing newline sidekick sends, which
+      -- would glue consecutive sends together.
+      copilot = {
+        format = function(_, str)
+          return str .. " "
+        end,
+      },
+    },
+  },
+})
+local sidekick = require("sidekick.cli")
+
+-- Prefers an already running `copilot` (e.g. the pane next to this one, ideally
+-- in this cwd) so sidekick attaches instead of asking whether to start another.
+local function copilot_filter()
+  local State = require("sidekick.cli.state")
+  for _, filter in ipairs({
+    { name = "copilot", started = true, cwd = true },
+    { name = "copilot", started = true },
+  }) do
+    if #State.get(filter) == 1 then
+      return filter
+    end
   end
+  return { name = "copilot" }
 end
 
--- `@file `
-local function copilot_add_file()
-  local file, pane = current_file(), require_copilot_pane()
-  if file and pane then
-    copilot_send_keys(pane, mention(pane, file) .. " ")
-    focus_pane(pane)
+local function copilot_send(msg)
+  return function()
+    sidekick.send({ filter = copilot_filter(), msg = msg, focus = true })
   end
-end
-
--- `@file (lines X-Y) ` for the cursor line or visual selection.
-local function file_reference(pane, file)
-  local range = current_range()
-  local lines = range[1] == range[2] and ("line " .. range[1]) or ("lines " .. range[1] .. "-" .. range[2])
-  return (pane and mention(pane, file) or ("@" .. fn.fnamemodify(file, ":~:."))) .. " (" .. lines .. ") "
-end
-
-local function copilot_add_position()
-  local file, pane = current_file(), require_copilot_pane()
-  if file and pane then
-    local ref = file_reference(pane, file)
-    exit_visual()
-    copilot_send_keys(pane, ref)
-    focus_pane(pane)
-  end
-end
-
--- Pastes the visual selection (or current line) as prompt text.
-local function copilot_send()
-  local pane = require_copilot_pane()
-  if not pane then
-    return
-  end
-  local text
-  if fn.mode():match("[vV\22]") then
-    text = table.concat(fn.getregion(fn.getpos("v"), fn.getpos("."), { type = fn.mode() }), "\n")
-    exit_visual()
-  else
-    text = api.nvim_get_current_line()
-  end
-  copilot_paste(pane, text)
-  focus_pane(pane)
 end
 
 local function copilot_yank_reference()
-  local file = current_file()
-  if file then
-    local ref = vim.trim(file_reference(copilot_pane(), file))
-    exit_visual()
+  if current_file() then
+    local ref = vim.trim(sidekick.render("{position}"))
+    api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
     fn.setreg("+", ref)
     vim.notify("Copied " .. ref)
   end
 end
+
+-- CodeCompanion drives Copilot CLI as an in-editor agent over ACP
+-- (`copilot --acp`): chat in a buffer, edits applied through Neovim.
+require("codecompanion").setup({
+  interactions = {
+    chat = { adapter = "copilot_acp" },
+  },
+  display = {
+    chat = { window = { layout = "vertical", position = "right" } },
+  },
+})
 
 -- Buffers & sessions ===============================
 -- ==================================================
@@ -1156,12 +1105,25 @@ map("n", "<leader>jL", function()
   tb.live_grep({ grep_open_files = true })
 end, "Search Open Buffers")
 
--- L: Copilot CLI (Emacs: gptel)
-map("n", "<leader>Ll", copilot_open, "Copilot Pane")
-map({ "n", "x" }, "<leader>Ls", copilot_send, "Send Text")
-map({ "n", "x" }, "<leader>L.", copilot_add_position, "Add Position")
-map("n", "<leader>La", copilot_add_file, "Add File")
+-- L: Copilot CLI (Emacs: gptel). Lowercase drives the `copilot` beside the
+-- editor (sidekick); LL/Lc/LA the in-editor ACP agent (CodeCompanion).
+map("n", "<leader>Ll", function()
+  sidekick.toggle({ filter = copilot_filter(), focus = true })
+end, "Copilot CLI")
+map("n", "<leader>Ls", copilot_send("{this}"), "Send Position")
+map("x", "<leader>Ls", copilot_send("{selection}"), "Send Selection")
+map({ "n", "x" }, "<leader>L.", copilot_send("{position}"), "Add Position")
+map("n", "<leader>La", copilot_send("{file}"), "Add File")
+map("n", "<leader>Ld", copilot_send("{diagnostics}"), "Add Diagnostics")
+map({ "n", "x" }, "<leader>Lm", sidekick.prompt, "Prompt Menu")
+map("n", "<leader>Lt", sidekick.select, "Select Tool/Session")
+map("n", "<leader>Lq", function()
+  sidekick.close({ filter = copilot_filter() })
+end, "Close Session")
 map({ "n", "x" }, "<leader>Ly", copilot_yank_reference, "Yank Reference")
+map("n", "<leader>LL", "<Cmd>CodeCompanionChat Toggle<CR>", "Agent Chat (ACP)")
+map("x", "<leader>Lc", ":CodeCompanionChat Add<CR>", "Add to Agent Chat")
+map({ "n", "x" }, "<leader>LA", "<Cmd>CodeCompanionActions<CR>", "Agent Actions")
 
 -- p: project
 map("n", "<leader>pp", function()

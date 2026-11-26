@@ -12,6 +12,10 @@
       "rev": "edefef779ab08ce1a4a404713e3012b0d202bd35",
       "src": "https://github.com/catppuccin/nvim"
     },
+    "codecompanion.nvim": {
+      "rev": "e262a7b7777cfdd09b271326198ff5bdf1a4d754",
+      "src": "https://github.com/olimorris/codecompanion.nvim"
+    },
     "codeql.nvim": {
       "rev": "772fca7306a6302acdf5098387d755d30bd5876a",
       "src": "https://github.com/pwntester/codeql.nvim"
@@ -65,6 +69,10 @@
     "plenary.nvim": {
       "rev": "74b06c6c75e4eeb3108ec01852001636d85a932b",
       "src": "https://github.com/nvim-lua/plenary.nvim"
+    },
+    "sidekick.nvim": {
+      "rev": "3d80a47e6375f6d647c9695d3afea6fa1b3275df",
+      "src": "https://github.com/folke/sidekick.nvim"
     },
     "telescope-file-browser.nvim": {
       "rev": "3610dc7dc91f06aa98b11dca5cc30dfa98626b7e",
