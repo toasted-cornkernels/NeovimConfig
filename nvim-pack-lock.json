@@ -86,6 +86,10 @@
       "rev": "1e1bab730218eaf97fce743be3f56e51075928ac",
       "src": "https://github.com/nvim-telescope/telescope.nvim"
     },
+    "treewalker.nvim": {
+      "rev": "9478b86c315d90a24154465c3fa8c6a3596f9d42",
+      "src": "https://github.com/aaronik/treewalker.nvim"
+    },
     "vim-hy": {
       "rev": "0bb9d63fc346fc8fa50afdfc4437d73ed9a53354",
       "src": "https://github.com/hylang/vim-hy"

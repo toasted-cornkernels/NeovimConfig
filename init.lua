@@ -185,6 +185,7 @@ vim.pack.add({
   gh("tpope/vim-repeat"),
   gh("tpope/vim-surround"),
   gh("tpope/vim-vinegar"),
+  gh("aaronik/treewalker.nvim"),
   gh("guns/vim-sexp"),
   gh("tpope/vim-sexp-mappings-for-regular-people"),
   gh("hylang/vim-hy"),
@@ -1198,6 +1199,9 @@ end, "Jump to Char")
 map({ "n", "x", "o" }, "<leader>jc", function()
   require("flash").jump()
 end, "Jump to Char")
+map({ "n", "x", "o" }, "<leader>jt", function()
+  require("flash").treesitter()
+end, "Jump to Node")
 map("n", "<leader>ju", "g;", "Previous Change")
 map("n", "<leader>jU", "g,", "Next Change")
 map("n", "<leader>jL", function()
@@ -1714,6 +1718,18 @@ map("i", "<C-d>", "<Del>", "Delete Char")
 map("i", "<C-k>", "<C-o>D", "Kill Line")
 map("i", "<C-l>", "<C-o>zz", "Recenter")
 map("n", "<C-l>", "zz", "Recenter")
+
+-- Combobulate-style tree-sitter editing (treewalker): Alt+hjkl walks nodes,
+-- Alt+Shift drags them. vim-sexp's buffer-local Alt maps win in Lisp buffers.
+for key, dir in pairs({ h = "left", j = "down", k = "up", l = "right" }) do
+  local label = dir:sub(1, 1):upper() .. dir:sub(2)
+  map({ "n", "x" }, "<M-" .. key .. ">", function()
+    require("treewalker")[dir]()
+  end, "Node " .. label)
+  map("n", "<M-" .. key:upper() .. ">", function()
+    require("treewalker")["swap_" .. dir]()
+  end, "Swap Node " .. label)
+end
 
 -- Commands =========================================
 -- ==================================================
