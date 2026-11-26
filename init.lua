@@ -938,6 +938,8 @@ require("which-key").setup({
     { "<leader>p", group = "Project" },
     { "<leader>q", group = "Quit" },
     { "<leader>s", group = "Search", mode = { "n", "x" } },
+    { "<leader>S", group = "Packages" },
+    { "<leader>Sp", group = "Package" },
     { "<leader>t", group = "Tabs" },
     { "<leader>T", group = "Toggles" },
     { "<leader>w", group = "Windows" },
@@ -1242,6 +1244,77 @@ map("n", "<leader>yf", function()
     vim.notify("Copied " .. file .. "::" .. fn.line("."))
   end
 end, "Yank File Position")
+
+-- S: packages (Emacs: straight.el)
+local function with_plugin(prompt, callback)
+  local plugins = vim.pack.get(nil, { info = false })
+  table.sort(plugins, function(a, b)
+    return a.spec.name:lower() < b.spec.name:lower()
+  end)
+  vim.ui.select(plugins, {
+    prompt = prompt,
+    format_item = function(p)
+      return p.spec.name .. (p.active and "" or " (inactive)")
+    end,
+  }, function(choice)
+    if choice then
+      callback(choice)
+    end
+  end)
+end
+
+map("n", "<leader>Spu", function()
+  vim.ui.input({ prompt = "Add plugin (owner/repo or URL): " }, function(src)
+    if src and src ~= "" then
+      vim.pack.add({ src:match("^%w+://") and src or gh(src) })
+      vim.notify("Added for this session; add it to vim.pack.add() in init.lua to keep it")
+    end
+  end)
+end, "Use Package")
+map("n", "<leader>Spp", function()
+  with_plugin("Update plugin: ", function(p)
+    vim.pack.update({ p.spec.name })
+  end)
+end, "Pull Package")
+map("n", "<leader>SpP", function()
+  vim.pack.update()
+end, "Pull All")
+map("n", "<leader>Spb", function()
+  with_plugin("Restore plugin to lockfile: ", function(p)
+    vim.pack.update({ p.spec.name }, { target = "lockfile" })
+  end)
+end, "Restore Package to Lockfile")
+map("n", "<leader>SpB", function()
+  vim.pack.update(nil, { target = "lockfile" })
+end, "Restore All to Lockfile")
+map("n", "<leader>Spc", function()
+  local unused = vim.tbl_map(
+    function(p)
+      return p.spec.name
+    end,
+    vim.tbl_filter(function(p)
+      return not p.active
+    end, vim.pack.get(nil, { info = false }))
+  )
+  if #unused == 0 then
+    vim.notify("No unused plugins")
+  elseif fn.confirm("Delete " .. table.concat(unused, ", ") .. "?", "&Yes\n&No", 2) == 1 then
+    vim.pack.del(unused)
+  end
+end, "Remove Unused Plugins")
+map("n", "<leader>Spv", function()
+  with_plugin("Visit plugin: ", function(p)
+    file_browser({ path = p.path })
+  end)
+end, "Visit Package")
+map("n", "<leader>SpV", function()
+  with_plugin("Open plugin website: ", function(p)
+    vim.ui.open((p.spec.src:gsub("%.git$", "")))
+  end)
+end, "Visit Package Website")
+map("n", "<leader>Spl", function()
+  vim.cmd.edit(fn.fnameescape(vim.fs.joinpath(fn.stdpath("log"), "nvim-pack.log")))
+end, "Update Log")
 
 -- k: lisp state (evil-lisp-state, via vim-sexp)
 autocmd("FileType", {
