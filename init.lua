@@ -129,6 +129,11 @@ if vim.g.vscode then
   map({ "n", "x", "o" }, "<Plug>(jump-char)", jump(), "Jump to Char")
   map({ "n", "x", "o" }, "<Plug>(jump-line)", jump_to("^"), "Jump to Line")
   map({ "n", "x", "o" }, "<Plug>(jump-word)", jump_to([[\<\w]]), "Jump to Word")
+  -- vscode-neovim names file buffers by path, so filetype detection and
+  -- tree-sitter parsing still work; only highlighting is left to VS Code.
+  map({ "n", "x", "o" }, "<Plug>(jump-node)", function()
+    require("flash").treesitter()
+  end, "Jump to Node")
   map("n", "<Plug>(clear-highlight)", "<Cmd>nohlsearch<CR>", "Clear Highlight")
   -- vscode-neovim mirrors 'number'/'relativenumber' into VS Code's line numbers.
   map("n", "<Plug>(toggle-line-numbers)", function()
