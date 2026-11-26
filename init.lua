@@ -626,8 +626,8 @@ require("orgmode").setup({
 -- 2. This instance advertises its RPC socket as the tmux window option
 --    @nvim_server, so Copilot (or anything in the window) can open files here:
 --      nvim --server "$(tmux show -wv @nvim_server)" --remote-tab FILE
--- 3. SPC L drives Copilot CLI (mirrors Emacs' gptel bindings): beside the
---    editor via sidekick.nvim, or in-editor over ACP via CodeCompanion.
+-- 3. SPC L drives Copilot CLI: beside the editor via sidekick.nvim, or
+--    in-editor over ACP via CodeCompanion (Emacs' agent-shell).
 
 vim.o.autoread = true
 autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermLeave" }, {
@@ -739,9 +739,24 @@ local function copilot_yank_reference()
   end
 end
 
--- CodeCompanion drives Copilot CLI as an in-editor agent over ACP
--- (`copilot --acp`): chat in a buffer, edits applied through Neovim.
+-- CodeCompanion is the agent-shell counterpart: Copilot CLI as an in-editor
+-- agent over ACP (`copilot --acp`), chat in a buffer, edits applied through
+-- Neovim. Defaults mirror Emacs' agent-shell-github-* settings.
 require("codecompanion").setup({
+  adapters = {
+    acp = {
+      copilot_acp = function()
+        return require("codecompanion.adapters").extend("copilot_acp", {
+          defaults = {
+            session_config_options = {
+              model = "claude-opus-5.5",
+              mode = "https://agentclientprotocol.com/protocol/session-modes#autopilot",
+            },
+          },
+        })
+      end,
+    },
+  },
   interactions = {
     chat = { adapter = "copilot_acp" },
   },
@@ -1105,8 +1120,9 @@ map("n", "<leader>jL", function()
   tb.live_grep({ grep_open_files = true })
 end, "Search Open Buffers")
 
--- L: Copilot CLI (Emacs: gptel). Lowercase drives the `copilot` beside the
--- editor (sidekick); LL/Lc/LA the in-editor ACP agent (CodeCompanion).
+-- L: Copilot CLI. Lowercase drives the `copilot` beside the editor
+-- (sidekick; keys follow Emacs' gptel); LL/Lc/LA the in-editor ACP agent
+-- (CodeCompanion, Emacs' agent-shell).
 map("n", "<leader>Ll", function()
   sidekick.toggle({ filter = copilot_filter(), focus = true })
 end, "Copilot CLI")
@@ -1121,9 +1137,9 @@ map("n", "<leader>Lq", function()
   sidekick.close({ filter = copilot_filter() })
 end, "Close Session")
 map({ "n", "x" }, "<leader>Ly", copilot_yank_reference, "Yank Reference")
-map("n", "<leader>LL", "<Cmd>CodeCompanionChat Toggle<CR>", "Agent Chat (ACP)")
-map("x", "<leader>Lc", ":CodeCompanionChat Add<CR>", "Add to Agent Chat")
-map({ "n", "x" }, "<leader>LA", "<Cmd>CodeCompanionActions<CR>", "Agent Actions")
+map("n", "<leader>LL", "<Cmd>CodeCompanionChat Toggle<CR>", "Agent Shell")
+map("x", "<leader>Lc", ":CodeCompanionChat Add<CR>", "Add to Agent Shell")
+map({ "n", "x" }, "<leader>LA", "<Cmd>CodeCompanionActions<CR>", "Agent Shell Actions")
 
 -- p: project
 map("n", "<leader>pp", function()
