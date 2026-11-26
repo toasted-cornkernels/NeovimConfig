@@ -267,6 +267,9 @@ vim.o.autocomplete = true
 vim.o.autocompletedelay = 200
 vim.o.complete = ".,w"
 vim.opt.completeopt = { "menuone", "noselect", "popup" }
+-- Silences ins-completion messages ("Pattern not found", "match 1 of 2"),
+-- which 'autocomplete' would otherwise flash on every keystroke.
+vim.opt.shortmess:append("c")
 
 autocmd("LspAttach", {
   callback = function(args)
