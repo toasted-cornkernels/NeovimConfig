@@ -1126,16 +1126,44 @@ end, "Search Open Buffers")
 map("n", "<leader>Ll", function()
   sidekick.toggle({ filter = copilot_filter(), focus = true })
 end, "Copilot CLI")
-map("n", "<leader>Ls", copilot_send("{this}"), "Send Position")
+-- Inside an Agent Shell buffer, Ls/Lq act on that chat like gptel-send/abort.
+local function agent_chat()
+  return vim.bo.filetype == "codecompanion" and require("codecompanion").buf_get_chat(api.nvim_get_current_buf())
+end
+local function agent_send(chat)
+  vim.cmd("stopinsert")
+  chat:submit()
+end
+map("n", "<leader>Ls", function()
+  local chat = agent_chat()
+  if chat then
+    agent_send(chat)
+  else
+    copilot_send("{this}")()
+  end
+end, "Send")
 map("x", "<leader>Ls", copilot_send("{selection}"), "Send Selection")
+map("n", "<leader>L<CR>", function()
+  local chat = require("codecompanion").last_chat()
+  if chat then
+    agent_send(chat)
+  else
+    vim.notify("No Agent Shell chat", vim.log.levels.WARN)
+  end
+end, "Send Agent Shell")
 map({ "n", "x" }, "<leader>L.", copilot_send("{position}"), "Add Position")
 map("n", "<leader>La", copilot_send("{file}"), "Add File")
 map("n", "<leader>Ld", copilot_send("{diagnostics}"), "Add Diagnostics")
 map({ "n", "x" }, "<leader>Lm", sidekick.prompt, "Prompt Menu")
 map("n", "<leader>Lt", sidekick.select, "Select Tool/Session")
 map("n", "<leader>Lq", function()
-  sidekick.close({ filter = copilot_filter() })
-end, "Close Session")
+  local chat = agent_chat()
+  if chat then
+    chat:stop()
+  else
+    sidekick.close({ filter = copilot_filter() })
+  end
+end, "Abort / Close Session")
 map({ "n", "x" }, "<leader>Ly", copilot_yank_reference, "Yank Reference")
 map("n", "<leader>LL", "<Cmd>CodeCompanionChat Toggle<CR>", "Agent Shell")
 map("x", "<leader>Lc", ":CodeCompanionChat Add<CR>", "Add to Agent Shell")
