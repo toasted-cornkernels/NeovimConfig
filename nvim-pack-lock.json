@@ -17,7 +17,7 @@
       "src": "https://github.com/olimorris/codecompanion.nvim"
     },
     "codeql.nvim": {
-      "rev": "723c275e034efc7f67d6c03a16ea5f2323fe550f",
+      "rev": "af6cec10a83db80578655f107b33b4026f84fba8",
       "src": "https://github.com/jeongsoolee09/codeql.nvim"
     },
     "diffview.nvim": {
